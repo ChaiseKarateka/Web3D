@@ -3,13 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <title>TP Web3D</title>
-    <!-- A-Frame -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <!-- AR.js -->
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
-
-  </head>
-  <body>
     
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    
+    <script src="https://cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
+    
+  </head>
+  
+  <body>
+    <a-scene>
+      <a-assets>
+         <img id="sky" src="sky.png">
+      </a-assets>
+      <a-sky src="#sky"></a-sky>
+    </a-scene>
   </body>
+  
 </html>
