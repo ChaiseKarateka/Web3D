@@ -11,13 +11,75 @@
   </head>
   
   <body style="margin:0; overflow:hidden;">
-    <a-scene>
+    
+    <a-scene physics="debug: true">
+      
       <a-assets>
         <img id="sky" src="sky.jpg">
         <img id="grass" src="grass.jpg">
       </a-assets>
+      
       <a-sky src="#sky"></a-sky>
+      
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
+
+      <a-box id="player" 
+        color="red" 
+        depth="1" height="1" width="1" 
+        position="0 0.5 0" 
+        dynamic-body>
+      </a-box>
+
+      <a-entity camera position="0 2 5" look-controls></a-entity>
+
+      <script>
+        AFRAME.registerComponent('player-controls', {
+          init: function () {
+            this.velocity = new THREE.Vector3();
+            this.accel = 0.05;
+            this.decel = 0.02;
+            this.jumpStrength = 5;
+            this.keys = {};
+
+            window.addEventListener('keydown', e => this.keys[e.code] = true);
+            window.addEventListener('keyup', e => this.keys[e.code] = false);
+
+            this.el.addEventListener('collide', e => {
+              if (e.detail.body.el.tagName === 'A-PLANE') {
+                this.onGround = true;
+              }
+            });
+            this.onGround = false;
+          },
+          tick: function () {
+            let body = this.el.body;
+            if (!body) return;
+
+            // Accélération selon les touches
+            if (this.keys['KeyW']) this.velocity.z -= this.accel;
+            if (this.keys['KeyS']) this.velocity.z += this.accel;
+            if (this.keys['KeyA']) this.velocity.x -= this.accel;
+            if (this.keys['KeyD']) this.velocity.x += this.accel;
+
+            // Décélération progressive
+            this.velocity.x *= (1 - this.decel);
+            this.velocity.z *= (1 - this.decel);
+
+            // Application du déplacement (au sol uniquement pour XY)
+            body.velocity.x = this.velocity.x;
+            body.velocity.z = this.velocity.z;
+
+            // Saut
+            if (this.keys['Space'] && this.onGround) {
+              body.velocity.y = this.jumpStrength;
+              this.onGround = false;
+            }
+          }
+        });
+
+        document.querySelector('#player').setAttribute('player-controls', '');
+      </script>
+      
     </a-scene>
   </body>
   
