@@ -27,7 +27,36 @@
 
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
-      
+      <script>
+        AFRAME.registerComponent('player-controls', {
+          init: function () {
+            this.jumpStrength = 5;
+            this.keys = {};
+
+            window.addEventListener('keydown', e => this.keys[e.code] = true);
+            window.addEventListener('keyup', e => this.keys[e.code] = false);
+
+            this.el.addEventListener('collide', e => {
+              if (e.detail.body.el.tagName === 'A-PLANE') {
+                this.onGround = true;
+              }
+            });
+            this.onGround = false;
+          },
+          tick: function () {
+            let body = this.el.body;
+            if (!body) return;
+
+            // Saut
+            if (this.keys['Space'] && this.onGround) {
+              body.velocity.y = this.jumpStrength;
+              this.onGround = false;
+            }
+          }
+        });
+
+        document.querySelector('#player').setAttribute('player-controls', '');
+      </script>
       
     </a-scene>
   </body>
