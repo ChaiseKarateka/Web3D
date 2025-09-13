@@ -25,31 +25,49 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
 
-      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body wasd-controls="acceleration: 20" jump-ability="distance: 1.8;"></a-box>
+      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body></a-box>
 
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
       <script>
-        AFRAME.registerComponent('jump-control', {
-          init: function () {
+      AFRAME.registerComponent('cube-controls', {
+        schema: { speed: {type: 'number', default: 5}, jump: {type: 'number', default: 5} },
+        init: function () {
+          this.keys = {};
+          this.canJump = false;
+          window.addEventListener('keydown', e => this.keys[e.code] = true);
+          window.addEventListener('keyup', e => this.keys[e.code] = false);
+
+          this.el.addEventListener('collide', e => {
+            // si collision par dessous => sol
+            if (e.detail.contact.ni.y > 0.5) this.canJump = true;
+          });
+        },
+        tick: function () {
+          const body = this.el.body;
+          if (!body) return;
+
+          // base: récupérer vitesse actuelle
+          let v = body.velocity;
+
+          // mouvement horizontal
+          if (this.keys['KeyW']) v.z = -this.data.speed;
+          if (this.keys['KeyS']) v.z =  this.data.speed;
+          if (this.keys['KeyA']) v.x = -this.data.speed;
+          if (this.keys['KeyD']) v.x =  this.data.speed;
+
+          // saut
+          if (this.keys['Space'] && this.canJump) {
+            v.y = this.data.jump;
             this.canJump = false;
-            window.addEventListener('keydown', e => {
-              if (e.code === 'Space' && this.canJump) {
-                this.el.body.velocity.y = 5;  // force du saut
-                this.canJump = false;
-              }
-            });
-
-            this.el.addEventListener('collide', e => {
-              if (e.detail.body.el.tagName === 'A-PLANE') {
-                this.canJump = true;
-              }
-            });
           }
-        });
 
-        document.querySelector('#player').setAttribute('jump-control', '');
-      </script>
+          body.velocity.set(v.x, v.y, v.z);
+        }
+      });
+
+      document.querySelector('#player').setAttribute('cube-controls','');
+    </script>
       
     </a-scene>
   </body>
