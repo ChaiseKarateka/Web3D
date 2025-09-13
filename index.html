@@ -7,6 +7,8 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     
     <script src="https://cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras/dist/aframe-extras.min.js"></script>
     
   </head>
   
@@ -23,7 +25,7 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
 
-      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body jump-control wasd-controls="acceleration:50"></a-box>
+      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body jump-control movement-controls="fly: false; speed: 5"></a-box>
 
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
@@ -31,60 +33,18 @@
       AFRAME.registerComponent('jump-control', {
         schema: { strength: { type: 'number', default: 5 } },
         init: function () {
-          this.wantJump = false;
           this.canJump = false;
-          const h = parseFloat(this.el.getAttribute('height')) || 1;
-          this.halfHeight = h / 2;
-          this._onKeyDown = this._onKeyDown.bind(this);
-          this._onKeyUp = this._onKeyUp.bind(this);
-          this._onCollide = this._onCollide.bind(this);
-
-          window.addEventListener('keydown', this._onKeyDown);
-          window.addEventListener('keyup', this._onKeyUp);
-          this.el.addEventListener('collide', this._onCollide);
-        },
-
-        _onKeyDown: function (e) {
-          const code = e.code || e.key || e.keyCode;
-          const isSpace = code === 'Space' || code === 'Spacebar' || code === ' ' || code === 32;
-          if (!isSpace) return;
-          e.preventDefault(); // évite le scroll de la page
-          this.wantJump = true;
-        },
-
-        _onKeyUp: function (e) {
-          const code = e.code || e.key || e.keyCode;
-          const isSpace = code === 'Space' || code === 'Spacebar' || code === ' ' || code === 32;
-          if (isSpace) this.wantJump = false;
-        },
-
-        _onCollide: function (e) {
-          // toute collision rend possible le saut. Tick() vérifie aussi la position Y.
-          this.canJump = true;
-        },
-
-        tick: function () {
-          const body = this.el.body;
-          if (!body) return;
-
-          // sécurité : si la boîte est suffisamment basse, considérer "au sol"
-          if (body.position.y <= this.halfHeight + 0.02) this.canJump = true;
-          if (body.position.y > this.halfHeight + 0.1) this.canJump = false;
-
-          if (this.wantJump && this.canJump) {
-            body.velocity.y = this.data.strength;
-            this.canJump = false;
-            this.wantJump = false;
-          }
-        },
-
-        remove: function () {
-          window.removeEventListener('keydown', this._onKeyDown);
-          window.removeEventListener('keyup', this._onKeyUp);
-          this.el.removeEventListener('collide', this._onCollide);
+          window.addEventListener('keydown', e => {
+            if ((e.code === 'Space' || e.keyCode === 32) && this.canJump) {
+              this.el.body.velocity.y = this.data.strength;
+              this.canJump = false;
+            }
+          });
+          this.el.addEventListener('collide', e => {
+            this.canJump = true;
+          });
         }
       });
-
       document.querySelector('#player').setAttribute('jump-control', '');
     </script>
       
