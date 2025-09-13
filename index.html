@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -52,8 +52,8 @@
           this.velocity = new THREE.Vector3(0, 0, 0);
           this.canJump = false;
 
-          window.addEventListener('keydown', e => this.keys[e.code] = true);
-          window.addEventListener('keyup', e => this.keys[e.code] = false);
+          document.addEventListener("keydown", keyDownHandler, false);
+          document.addEventListener("keyup", keyUpHandler, false);
 
           this.el.addEventListener('collide', e => {
             if (e.detail.contact.ni.y > 0.5) this.canJump = true;
@@ -62,15 +62,47 @@
         tick: function () {
           const body = this.el.body;
           if (!body) return;
-
+          
+          let rightPressed = false;
+          let leftPressed = false;
+          let upPressed = false;
+          let downPressed = false;
+          
           let targetX = 0, targetZ = 0;
-          if (this.keys['KeyW']) targetZ -= this.data.maxSpeed;
-          if (this.keys['KeyS']) targetZ += this.data.maxSpeed;
-          if (this.keys['KeyA']) targetX -= this.data.maxSpeed;
-          if (this.keys['KeyD']) targetX += this.data.maxSpeed;
 
-          this.velocity.x += (targetX - this.velocity.x) * (targetX ? this.data.accel : this.data.decel);
-          this.velocity.z += (targetZ - this.velocity.z) * (targetZ ? this.data.accel : this.data.decel);
+          function keyDownHandler(event) {
+            if (event.code === "KeyD") {
+              rightPressed = true;
+            } else if (event.code === "KeyA") {
+              leftPressed = true;
+            }
+            if (event.code === "KeyS") {
+              downPressed = true;
+            } else if (event.code === "KeyW") {
+              upPressed = true;
+            }
+          }
+          
+          function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (rightPressed) {
+              playerX += 5;
+            } else if (leftPressed) {
+              playerX -= 5;
+            }
+          
+            if (downPressed) {
+              playerZ += 5;
+            } else if (upPressed) {
+              playerZ -= 5;
+            }
+          
+            ctx.drawImage(img, playerX, playerZ);
+            requestAnimationFrame(draw);
+          }
+
+          this.velocity.x += (playerX - this.velocity.x) * (playerX ? this.data.accel : this.data.decel);
+          this.velocity.z += (playerZ - this.velocity.z) * (playerZ ? this.data.accel : this.data.decel);
 
           if (this.keys['Space'] && this.canJump) {
             body.velocity.y = this.data.jump;
