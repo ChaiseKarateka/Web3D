@@ -29,18 +29,17 @@
       <a-box id="player"
              color="red"
              width="1" height="1" depth="1"
-             position="0 0.6 0"
+             position="0 0.5 0"
              dynamic-body
              cube-controls>
       </a-box>
 
-      <!-- Caméra enfant du joueur -->
-      <a-entity id="camrig" position="0 1.5 0">
-        <a-camera look-controls></a-camera>
-      </a-entity>
+      <!-- Caméra orbit autour du cube -->
+      <a-entity id="orbitcam" orbit-camera="target: #player"></a-entity>
     </a-scene>
 
     <script>
+      // Déplacement du cube avec physique + accélération
       AFRAME.registerComponent('cube-controls', {
         schema: {
           maxSpeed: {type: 'number', default: 5},
@@ -52,7 +51,6 @@
           this.keys = {};
           this.velocity = new THREE.Vector3(0, 0, 0);
           this.canJump = false;
-          this.cam = document.querySelector('#camrig');
 
           window.addEventListener('keydown', e => this.keys[e.code] = true);
           window.addEventListener('keyup', e => this.keys[e.code] = false);
@@ -65,40 +63,85 @@
           const body = this.el.body;
           if (!body) return;
 
-          // vecteur direction selon touches
-          let dir = new THREE.Vector3();
-          if (this.keys['KeyW']) dir.z -= 1;
-          if (this.keys['KeyS']) dir.z += 1;
-          if (this.keys['KeyA']) dir.x -= 1;
-          if (this.keys['KeyD']) dir.x += 1;
+          let targetX = 0, targetZ = 0;
+          if (this.keys['KeyW']) targetZ -= this.data.maxSpeed;
+          if (this.keys['KeyS']) targetZ += this.data.maxSpeed;
+          if (this.keys['KeyA']) targetX -= this.data.maxSpeed;
+          if (this.keys['KeyD']) targetX += this.data.maxSpeed;
 
-          if (dir.lengthSq() > 0) {
-            dir.normalize();
-            // appliquer orientation de la caméra (seulement yaw)
-            let camRot = this.cam.object3D.rotation.y;
-            let rotMatrix = new THREE.Matrix4().makeRotationY(camRot);
-            dir.applyMatrix4(rotMatrix);
-            dir.multiplyScalar(this.data.maxSpeed);
-          }
+          this.velocity.x += (targetX - this.velocity.x) * (targetX ? this.data.accel : this.data.decel);
+          this.velocity.z += (targetZ - this.velocity.z) * (targetZ ? this.data.accel : this.data.decel);
 
-          // interpolation progressive
-          this.velocity.x += (dir.x - this.velocity.x) * (dir.lengthSq() > 0 ? this.data.accel : this.data.decel);
-          this.velocity.z += (dir.z - this.velocity.z) * (dir.lengthSq() > 0 ? this.data.accel : this.data.decel);
-
-          // saut
           if (this.keys['Space'] && this.canJump) {
             body.velocity.y = this.data.jump;
             this.canJump = false;
           }
 
-          // appliquer
           body.velocity.set(this.velocity.x, body.velocity.y, this.velocity.z);
+        }
+      });
 
-          // caméra suit le cube
-          this.cam.object3D.position.copy(this.el.object3D.position).add(new THREE.Vector3(0,1.5,0));
+      // Caméra orbit
+      AFRAME.registerComponent('orbit-camera', {
+        schema: {
+          target: {type: 'selector'},
+          distance: {default: 5},
+          minDistance: {default: 2},
+          maxDistance: {default: 10},
+          azimuth: {default: 0},   // angle horizontal
+          elevation: {default: 30} // angle vertical en degrés
+        },
+        init: function () {
+          this.camera = document.createElement('a-camera');
+          this.el.appendChild(this.camera);
+
+          this.isDragging = false;
+          this.lastX = 0;
+          this.lastY = 0;
+
+          // Drag souris
+          window.addEventListener('mousedown', e => {
+            if (e.button === 0) {
+              this.isDragging = true;
+              this.lastX = e.clientX;
+              this.lastY = e.clientY;
+            }
+          });
+          window.addEventListener('mouseup', () => this.isDragging = false);
+          window.addEventListener('mousemove', e => {
+            if (!this.isDragging) return;
+            let dx = e.clientX - this.lastX;
+            let dy = e.clientY - this.lastY;
+            this.lastX = e.clientX;
+            this.lastY = e.clientY;
+            this.data.azimuth -= dx * 0.3;
+            this.data.elevation -= dy * 0.3;
+            this.data.elevation = Math.max(5, Math.min(90, this.data.elevation));
+          });
+
+          // Molette zoom
+          window.addEventListener('wheel', e => {
+            this.data.distance += e.deltaY * 0.01;
+            this.data.distance = Math.max(this.data.minDistance, Math.min(this.data.maxDistance, this.data.distance));
+          });
+        },
+        tick: function () {
+          if (!this.data.target) return;
+
+          let targetPos = new THREE.Vector3();
+          this.data.target.object3D.getWorldPosition(targetPos);
+
+          let az = THREE.MathUtils.degToRad(this.data.azimuth);
+          let el = THREE.MathUtils.degToRad(this.data.elevation);
+
+          let x = targetPos.x + this.data.distance * Math.cos(el) * Math.sin(az);
+          let y = targetPos.y + this.data.distance * Math.sin(el);
+          let z = targetPos.z + this.data.distance * Math.cos(el) * Math.cos(az);
+
+          this.el.object3D.position.set(x, y, z);
+          this.el.object3D.lookAt(targetPos);
         }
       });
     </script>
   </body>
 </html>
-
