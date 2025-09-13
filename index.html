@@ -25,28 +25,11 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
 
-      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body jump-control movement-controls="fly: false; speed: 5"></a-box>
+      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body jump-control wasd-controls jump-ability="distance: 1.8;"></a-box>
 
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
-      <script>
-      AFRAME.registerComponent('jump-control', {
-        schema: { strength: { type: 'number', default: 5 } },
-        init: function () {
-          this.canJump = false;
-          window.addEventListener('keydown', e => {
-            if ((e.code === 'Space' || e.keyCode === 32) && this.canJump) {
-              this.el.body.velocity.y = this.data.strength;
-              this.canJump = false;
-            }
-          });
-          this.el.addEventListener('collide', e => {
-            this.canJump = true;
-          });
-        }
-      });
-      document.querySelector('#player').setAttribute('jump-control', '');
-    </script>
+      
       
     </a-scene>
   </body>
