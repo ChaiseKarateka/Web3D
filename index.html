@@ -25,11 +25,32 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
 
-      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body cube-controls></a-box>
+      <html>
+  <head>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/n5ro/aframe-physics-system/dist/aframe-physics-system.min.js"></script>
+  </head>
+  <body>
+    <a-scene physics="gravity: -9.8" debug="true">
+      <!-- Sol -->
+      <a-plane rotation="-90 0 0" width="20" height="20" color="green" static-body></a-plane>
 
-      <a-entity camera position="0 2 5" look-controls></a-entity>
+      <!-- Joueur -->
+      <a-box id="player"
+             color="red"
+             width="1" height="1" depth="1"
+             position="0 0.5 0"
+             dynamic-body
+             cube-controls>
+      </a-box>
 
-      <script>
+      <!-- Caméra enfant du joueur -->
+      <a-entity id="camrig" position="0 1.5 0">
+        <a-camera look-controls></a-camera>
+      </a-entity>
+    </a-scene>
+
+    <script>
       AFRAME.registerComponent('cube-controls', {
         schema: {
           maxSpeed: {type: 'number', default: 5},
@@ -41,12 +62,12 @@
           this.keys = {};
           this.velocity = new THREE.Vector3(0, 0, 0);
           this.canJump = false;
+          this.cam = document.querySelector('#camrig');
 
           window.addEventListener('keydown', e => this.keys[e.code] = true);
           window.addEventListener('keyup', e => this.keys[e.code] = false);
 
           this.el.addEventListener('collide', e => {
-            // si collision par dessous => sol
             if (e.detail.contact.ni.y > 0.5) this.canJump = true;
           });
         },
@@ -54,32 +75,40 @@
           const body = this.el.body;
           if (!body) return;
 
-          // Cibles de mouvement (direction demandée par les touches)
-          let targetX = 0, targetZ = 0;
-          if (this.keys['KeyW']) targetZ -= this.data.maxSpeed;
-          if (this.keys['KeyS']) targetZ += this.data.maxSpeed;
-          if (this.keys['KeyA']) targetX -= this.data.maxSpeed;
-          if (this.keys['KeyD']) targetX += this.data.maxSpeed;
+          // vecteur direction selon touches
+          let dir = new THREE.Vector3();
+          if (this.keys['KeyW']) dir.z -= 1;
+          if (this.keys['KeyS']) dir.z += 1;
+          if (this.keys['KeyA']) dir.x -= 1;
+          if (this.keys['KeyD']) dir.x += 1;
 
-          // Interpolation progressive (accélération/décélération)
-          this.velocity.x += (targetX - this.velocity.x) * (targetX ? this.data.accel : this.data.decel);
-          this.velocity.z += (targetZ - this.velocity.z) * (targetZ ? this.data.accel : this.data.decel);
+          if (dir.lengthSq() > 0) {
+            dir.normalize();
+            // appliquer orientation de la caméra (seulement yaw)
+            let camRot = this.cam.object3D.rotation.y;
+            let rotMatrix = new THREE.Matrix4().makeRotationY(camRot);
+            dir.applyMatrix4(rotMatrix);
+            dir.multiplyScalar(this.data.maxSpeed);
+          }
 
-          // Saut
+          // interpolation progressive
+          this.velocity.x += (dir.x - this.velocity.x) * (dir.lengthSq() > 0 ? this.data.accel : this.data.decel);
+          this.velocity.z += (dir.z - this.velocity.z) * (dir.lengthSq() > 0 ? this.data.accel : this.data.decel);
+
+          // saut
           if (this.keys['Space'] && this.canJump) {
             body.velocity.y = this.data.jump;
             this.canJump = false;
           }
 
-          // Application au corps physique
+          // appliquer
           body.velocity.set(this.velocity.x, body.velocity.y, this.velocity.z);
+
+          // caméra suit le cube
+          this.cam.object3D.position.copy(this.el.object3D.position).add(new THREE.Vector3(0,1.5,0));
         }
       });
-
-      document.querySelector('#player').setAttribute('cube-controls','');
     </script>
-      
-    </a-scene>
   </body>
-  
 </html>
+
