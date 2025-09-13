@@ -28,26 +28,65 @@
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
       <script>
-        AFRAME.registerComponent('jump-control', {
-          init: function () {
+      AFRAME.registerComponent('jump-control', {
+        schema: { strength: { type: 'number', default: 5 } },
+        init: function () {
+          this.wantJump = false;
+          this.canJump = false;
+          const h = parseFloat(this.el.getAttribute('height')) || 1;
+          this.halfHeight = h / 2;
+          this._onKeyDown = this._onKeyDown.bind(this);
+          this._onKeyUp = this._onKeyUp.bind(this);
+          this._onCollide = this._onCollide.bind(this);
+
+          window.addEventListener('keydown', this._onKeyDown);
+          window.addEventListener('keyup', this._onKeyUp);
+          this.el.addEventListener('collide', this._onCollide);
+        },
+
+        _onKeyDown: function (e) {
+          const code = e.code || e.key || e.keyCode;
+          const isSpace = code === 'Space' || code === 'Spacebar' || code === ' ' || code === 32;
+          if (!isSpace) return;
+          e.preventDefault(); // évite le scroll de la page
+          this.wantJump = true;
+        },
+
+        _onKeyUp: function (e) {
+          const code = e.code || e.key || e.keyCode;
+          const isSpace = code === 'Space' || code === 'Spacebar' || code === ' ' || code === 32;
+          if (isSpace) this.wantJump = false;
+        },
+
+        _onCollide: function (e) {
+          // toute collision rend possible le saut. Tick() vérifie aussi la position Y.
+          this.canJump = true;
+        },
+
+        tick: function () {
+          const body = this.el.body;
+          if (!body) return;
+
+          // sécurité : si la boîte est suffisamment basse, considérer "au sol"
+          if (body.position.y <= this.halfHeight + 0.02) this.canJump = true;
+          if (body.position.y > this.halfHeight + 0.1) this.canJump = false;
+
+          if (this.wantJump && this.canJump) {
+            body.velocity.y = this.data.strength;
             this.canJump = false;
-            window.addEventListener('keydown', e => {
-              if (e.code === 'Space' && this.canJump) {
-                this.el.body.velocity.y = 5;  // force du saut
-                this.canJump = false;
-              }
-            });
-
-            this.el.addEventListener('collide', e => {
-              if (e.detail.body.el.tagName === 'A-PLANE') {
-                this.canJump = true;
-              }
-            });
+            this.wantJump = false;
           }
-        });
+        },
 
-        document.querySelector('#player').setAttribute('jump-control', '');
-      </script>
+        remove: function () {
+          window.removeEventListener('keydown', this._onKeyDown);
+          window.removeEventListener('keyup', this._onKeyUp);
+          this.el.removeEventListener('collide', this._onCollide);
+        }
+      });
+
+      document.querySelector('#player').setAttribute('jump-control', '');
+    </script>
       
     </a-scene>
   </body>
