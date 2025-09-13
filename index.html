@@ -25,16 +25,23 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
 
-      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body></a-box>
+      <a-box id="player" color="red" depth="1" height="1" width="1" position="0 0.5 0" dynamic-body cube-controls></a-box>
 
       <a-entity camera position="0 2 5" look-controls></a-entity>
 
       <script>
       AFRAME.registerComponent('cube-controls', {
-        schema: { speed: {type: 'number', default: 5}, jump: {type: 'number', default: 5} },
+        schema: {
+          maxSpeed: {type: 'number', default: 5},
+          accel: {type: 'number', default: 0.2},
+          decel: {type: 'number', default: 0.1},
+          jump: {type: 'number', default: 5}
+        },
         init: function () {
           this.keys = {};
+          this.velocity = new THREE.Vector3(0, 0, 0);
           this.canJump = false;
+
           window.addEventListener('keydown', e => this.keys[e.code] = true);
           window.addEventListener('keyup', e => this.keys[e.code] = false);
 
@@ -47,22 +54,25 @@
           const body = this.el.body;
           if (!body) return;
 
-          // base: récupérer vitesse actuelle
-          let v = body.velocity;
+          // Cibles de mouvement (direction demandée par les touches)
+          let targetX = 0, targetZ = 0;
+          if (this.keys['KeyW']) targetZ -= this.data.maxSpeed;
+          if (this.keys['KeyS']) targetZ += this.data.maxSpeed;
+          if (this.keys['KeyA']) targetX -= this.data.maxSpeed;
+          if (this.keys['KeyD']) targetX += this.data.maxSpeed;
 
-          // mouvement horizontal
-          if (this.keys['KeyW']) v.z = -this.data.speed;
-          if (this.keys['KeyS']) v.z =  this.data.speed;
-          if (this.keys['KeyA']) v.x = -this.data.speed;
-          if (this.keys['KeyD']) v.x =  this.data.speed;
+          // Interpolation progressive (accélération/décélération)
+          this.velocity.x += (targetX - this.velocity.x) * (targetX ? this.data.accel : this.data.decel);
+          this.velocity.z += (targetZ - this.velocity.z) * (targetZ ? this.data.accel : this.data.decel);
 
-          // saut
+          // Saut
           if (this.keys['Space'] && this.canJump) {
-            v.y = this.data.jump;
+            body.velocity.y = this.data.jump;
             this.canJump = false;
           }
 
-          body.velocity.set(v.x, v.y, v.z);
+          // Application au corps physique
+          body.velocity.set(this.velocity.x, body.velocity.y, this.velocity.z);
         }
       });
 
