@@ -7,8 +7,6 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     
     <script src="https://cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras/dist/aframe-extras.min.js"></script>
     
   </head>
   
@@ -25,155 +23,38 @@
       
       <a-plane position="0 0 0" rotation="-90 0 0" width="400" height="400" src="#grass" static-body></a-plane>
       
-      <!-- Joueur -->
-      <a-box id="player"
-             color="red"
-             width="1" height="1" depth="1"
-             position="0 0.5 0"
+      <!-- Cube joueur -->
+      <a-box id="player" 
+             color="red" 
+             depth="1" height="1" width="1" 
+             position="0 0.5 0" 
              dynamic-body
-             cube-controls>
+             wasd-controls="acceleration: 20">
       </a-box>
 
-      <!-- Caméra orbit autour du cube -->
-      <a-entity id="orbitcam" orbit-camera="target: #player"></a-entity>
-    </a-scene>
+      <a-entity camera position="0 3 8" look-controls></a-entity>
 
-    <script>
-      // Déplacement du cube avec physique + accélération
-      AFRAME.registerComponent('cube-controls', {
-        schema: {
-          maxSpeed: {type: 'number', default: 5},
-          accel: {type: 'number', default: 0.2},
-          decel: {type: 'number', default: 0.1},
-          jump: {type: 'number', default: 5}
-        },
-        init: function () {
-          this.keys = {};
-          this.velocity = new THREE.Vector3(0, 0, 0);
-          this.canJump = false;
-
-          document.addEventListener("keydown", keyDownHandler, false);
-          document.addEventListener("keyup", keyUpHandler, false);
-
-          this.el.addEventListener('collide', e => {
-            if (e.detail.contact.ni.y > 0.5) this.canJump = true;
-          });
-        },
-        tick: function () {
-          const body = this.el.body;
-          if (!body) return;
-          
-          let rightPressed = false;
-          let leftPressed = false;
-          let upPressed = false;
-          let downPressed = false;
-          
-          let targetX = 0, targetZ = 0;
-
-          function keyDownHandler(event) {
-            if (event.code === "KeyD") {
-              rightPressed = true;
-            } else if (event.code === "KeyA") {
-              leftPressed = true;
-            }
-            if (event.code === "KeyS") {
-              downPressed = true;
-            } else if (event.code === "KeyW") {
-              upPressed = true;
-            }
-          }
-          
-          function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (rightPressed) {
-              playerX += 5;
-            } else if (leftPressed) {
-              playerX -= 5;
-            }
-          
-            if (downPressed) {
-              playerZ += 5;
-            } else if (upPressed) {
-              playerZ -= 5;
-            }
-          
-            ctx.drawImage(img, playerX, playerZ);
-            requestAnimationFrame(draw);
-          }
-
-          this.velocity.x += (playerX - this.velocity.x) * (playerX ? this.data.accel : this.data.decel);
-          this.velocity.z += (playerZ - this.velocity.z) * (playerZ ? this.data.accel : this.data.decel);
-
-          if (this.keys['Space'] && this.canJump) {
-            body.velocity.y = this.data.jump;
+      <script>
+        AFRAME.registerComponent('jump-control', {
+          init: function () {
             this.canJump = false;
+            window.addEventListener('keydown', e => {
+              if (e.code === 'Space' && this.canJump) {
+                this.el.body.velocity.y = 5;  // force du saut
+                this.canJump = false;
+              }
+            });
+
+            this.el.addEventListener('collide', e => {
+              if (e.detail.body.el.tagName === 'A-PLANE') {
+                this.canJump = true;
+              }
+            });
           }
+        });
 
-          body.velocity.set(this.velocity.x, body.velocity.y, this.velocity.z);
-        }
-      });
-
-      // Caméra orbit
-      AFRAME.registerComponent('orbit-camera', {
-        schema: {
-          target: {type: 'selector'},
-          distance: {default: 5},
-          minDistance: {default: 2},
-          maxDistance: {default: 10},
-          azimuth: {default: 0},   // angle horizontal
-          elevation: {default: 30} // angle vertical en degrés
-        },
-        init: function () {
-          this.camera = document.createElement('a-camera');
-          this.el.appendChild(this.camera);
-
-          this.isDragging = false;
-          this.lastX = 0;
-          this.lastY = 0;
-
-          // Drag souris
-          window.addEventListener('mousedown', e => {
-            if (e.button === 0) {
-              this.isDragging = true;
-              this.lastX = e.clientX;
-              this.lastY = e.clientY;
-            }
-          });
-          window.addEventListener('mouseup', () => this.isDragging = false);
-          window.addEventListener('mousemove', e => {
-            if (!this.isDragging) return;
-            let dx = e.clientX - this.lastX;
-            let dy = e.clientY - this.lastY;
-            this.lastX = e.clientX;
-            this.lastY = e.clientY;
-            this.data.azimuth -= dx * 0.3;
-            this.data.elevation -= dy * 0.3;
-            this.data.elevation = Math.max(5, Math.min(90, this.data.elevation));
-          });
-
-          // Molette zoom
-          window.addEventListener('wheel', e => {
-            this.data.distance += e.deltaY * 0.01;
-            this.data.distance = Math.max(this.data.minDistance, Math.min(this.data.maxDistance, this.data.distance));
-          });
-        },
-        tick: function () {
-          if (!this.data.target) return;
-
-          let targetPos = new THREE.Vector3();
-          this.data.target.object3D.getWorldPosition(targetPos);
-
-          let az = THREE.MathUtils.degToRad(this.data.azimuth);
-          let el = THREE.MathUtils.degToRad(this.data.elevation);
-
-          let x = targetPos.x + this.data.distance * Math.cos(el) * Math.sin(az);
-          let y = targetPos.y + this.data.distance * Math.sin(el);
-          let z = targetPos.z + this.data.distance * Math.cos(el) * Math.cos(az);
-
-          this.el.object3D.position.set(x, y, z);
-          this.el.object3D.lookAt(targetPos);
-        }
-      });
-    </script>
+        document.querySelector('#player').setAttribute('jump-control', '');
+      </script>
+    </a-scene>
   </body>
 </html>
