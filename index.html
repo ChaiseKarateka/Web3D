@@ -34,16 +34,79 @@
              wasd-controls="acceleration: 20">
       </a-box>
 
-      <!-- Caméra orbit -->
-      <a-entity orbit-controls="
-          target: #player;
-          enableDamping: true;
-          dampingFactor: 0.1;
-          minDistance: 3;
-          maxDistance: 10;
-          minPolarAngle: 0.1;   /* ≈ 6° empêche de passer sous le sol */
-          maxPolarAngle: 1.57;  /* ≈ 90° limite vue de dessus */
-          rotateSpeed: 0.3;
-          zoomSpeed: 0.5;">
+      <!-- Rig caméra -->
+      <a-entity id="cameraRig" third-person-camera="target: #player">
         <a-camera></a-camera>
       </a-entity>
+
+      <!-- Script caméra 3e personne -->
+      <script>
+        AFRAME.registerComponent('third-person-camera', {
+          schema: {
+            target: { type: 'selector' },
+            distance: { default: 5 },
+            minDistance: { default: 3 },
+            maxDistance: { default: 10 },
+            polarAngle: { default: 45 },  // angle vertical initial
+            minPolarAngle: { default: 10 },
+            maxPolarAngle: { default: 80 },
+            azimuthAngle: { default: 0 }  // angle horizontal initial
+          },
+          init: function () {
+            this.lookVector = new THREE.Vector3();
+            this.mouseDown = false;
+            this.el.sceneEl.canvas.addEventListener('mousedown', () => this.mouseDown = true);
+            this.el.sceneEl.canvas.addEventListener('mouseup', () => this.mouseDown = false);
+            this.el.sceneEl.canvas.addEventListener('mousemove', e => {
+              if (!this.mouseDown) return;
+              this.data.azimuthAngle -= e.movementX * 0.2;
+              this.data.polarAngle -= e.movementY * 0.2;
+              this.data.polarAngle = Math.min(Math.max(this.data.polarAngle, this.data.minPolarAngle), this.data.maxPolarAngle);
+            });
+            this.el.sceneEl.canvas.addEventListener('wheel', e => {
+              this.data.distance += e.deltaY * 0.01;
+              this.data.distance = Math.min(Math.max(this.data.distance, this.data.minDistance), this.data.maxDistance);
+            });
+          },
+          tick: function () {
+            if (!this.data.target) return;
+            let targetPos = this.data.target.object3D.position;
+
+            // Conversion angles en radians
+            let phi = THREE.MathUtils.degToRad(this.data.polarAngle);
+            let theta = THREE.MathUtils.degToRad(this.data.azimuthAngle);
+
+            // Position caméra en coordonnées sphériques
+            let x = this.data.distance * Math.sin(phi) * Math.cos(theta);
+            let y = this.data.distance * Math.cos(phi);
+            let z = this.data.distance * Math.sin(phi) * Math.sin(theta);
+
+            this.el.object3D.position.set(targetPos.x + x, targetPos.y + y, targetPos.z + z);
+            this.el.object3D.lookAt(targetPos);
+          }
+        });
+      </script>
+
+      <!-- Script saut -->
+      <script>
+        AFRAME.registerComponent('jump-control', {
+          init: function () {
+            this.canJump = false;
+            window.addEventListener('keydown', e => {
+              if (e.code === 'Space' && this.canJump) {
+                this.el.body.velocity.y = 5;
+                this.canJump = false;
+              }
+            });
+            this.el.addEventListener('collide', e => {
+              if (e.detail.body.el.getAttribute('static-body') !== null) {
+                this.canJump = true;
+              }
+            });
+          }
+        });
+        document.querySelector('#player').setAttribute('jump-control', '');
+      </script>
+    </a-scene>
+  </body>
+</html>
