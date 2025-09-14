@@ -34,14 +34,15 @@
              wasd-controls="acceleration: 20">
       </a-box>
 
-      <a-entity id="rig" orbit-controls="
+      <!-- Caméra orbit -->
+      <a-entity orbit-controls="
           target: #player;
           enableDamping: true;
           dampingFactor: 0.1;
           minDistance: 3;
           maxDistance: 10;
-          minPolarAngle: 0.1;   /* empêche de passer sous le sol */
-          maxPolarAngle: 1.57;  /* ≈ 90° en radians, empêche de monter trop haut */
+          minPolarAngle: 0.1;   /* ≈ 6° empêche de passer sous le sol */
+          maxPolarAngle: 1.57;  /* ≈ 90° limite vue de dessus */
           rotateSpeed: 0.3;
           zoomSpeed: 0.5;">
         <a-camera></a-camera>
