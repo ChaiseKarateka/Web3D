@@ -7,7 +7,9 @@
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     
     <script src="https://cdn.rawgit.com/donmccurdy/aframe-physics-system/v3.3.0/dist/aframe-physics-system.min.js"></script>
-    
+
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@v6.1.1/dist/aframe-extras.controls.min.js"></script>
+
   </head>
   
   <body style="margin:0; overflow:hidden;">
@@ -32,8 +34,19 @@
              wasd-controls="acceleration: 20">
       </a-box>
 
-      <a-entity camera position="0 3 8" look-controls></a-entity>
-
+      <a-entity id="rig" orbit-controls="
+          target: #player;
+          enableDamping: true;
+          dampingFactor: 0.1;
+          minDistance: 3;
+          maxDistance: 10;
+          minPolarAngle: 0.1;   /* empêche de passer sous le sol */
+          maxPolarAngle: 1.57;  /* ≈ 90° en radians, empêche de monter trop haut */
+          rotateSpeed: 0.3;
+          zoomSpeed: 0.5;">
+        <a-camera></a-camera>
+      </a-entity>
+      
       <script>
         AFRAME.registerComponent('jump-control', {
           init: function () {
